@@ -27,6 +27,7 @@ function Missile(x, y, dx, dy) {
     missile.y = y;
     missile.dx = dx;
     missile.dy = dy;
+    missile.engineOn = false;
 
     missile.update = function () {
         if (missile.exploding) {
@@ -39,6 +40,10 @@ function Missile(x, y, dx, dy) {
             missile.x += missile.dx;
             missile.y += missile.dy;
             missile.dy += 0.05;
+            if (missile.engineOn) {
+                missile.dx += 0.1;
+                missile.dy -= 0.1;
+            }
         }
     }
     missile.draw = function(canvas, ctx) {
@@ -55,8 +60,12 @@ function Missile(x, y, dx, dy) {
                     function () {
                         ctx.beginPath();
                         ctx.arc(0, 0, 1, 0, 2*Math.PI);
-                        ctx.lineWidth = 1;
-                        ctx.fillStyle = "black";
+                        ctx.lineWidth = .1;
+                        if (missile.engineOn) {
+                            ctx.fillStyle = "red";
+                        } else {
+                            ctx.fillStyle = "black";
+                        }
                         ctx.strokeStyle = "blue";
                         ctx.fill();
                         ctx.stroke();
@@ -85,17 +94,90 @@ function Missile(x, y, dx, dy) {
     };
 };
 
+function Launcher(x, y, angle) {
+    var launcher = this;
+    launcher.x = x;
+    launcher.y = y;
+    launcher.angle = angle;
+    launcher.missiles = [];
+    launcher.turningRight = false;
+    launcher.turningLeft = false;
+
+    launcher.turnRight = function(value) {
+        launcher.turningRight = value;
+    }
+    launcher.turnLeft = function(value) {
+        launcher.turningLeft = value;
+    }
+
+    launcher.draw = function(canvas, ctx) {
+        WithContext(ctx, { translateX: launcher.x, translateY: launcher.y,
+                           scale: halfcell / 10 },
+                    function () {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.lineWidth = 3;
+                        ctx.rotate(Math.PI + launcher.angle);
+                        ctx.moveTo(0, 8);
+                        ctx.lineTo(0, 17);
+                        ctx.stroke();
+                        ctx.restore();
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 10, 1*Math.PI, 0);
+                        ctx.lineWidth = 1;
+                        ctx.fillStyle = "gray";
+                        ctx.strokeStyle = "black";
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                    });
+    };
+
+    launcher.update = function() {
+        if (launcher.turningRight) {
+            launcher.angle += 0.1;
+        }
+        if (launcher.turningLeft) {
+            launcher.angle -= 0.1;
+        }
+        launcher.restrictAngle();
+    };
+
+    launcher.restrictAngle = function() {
+        var max = Math.PI * 0.45;
+        var min = -max;
+        if (launcher.angle > max) {
+            launcher.angle = max;
+        }
+        if (launcher.angle < min) {
+            launcher.angle = min;
+        }
+    };
+}
+
 function Game() {
-    this.missile = []
+    this.objects = []
 
     this.init = function(callback) {
         this.callback = callback;
     }
 
-    this.addMissile = function() {
-        var missile = new Missile(30, 400, 2, -4);
-        this.missile.push(missile);
-        return missile;
+    this.addMissile = function(x, y, angle) {
+        var sin = Math.asin(angle);
+        var cos = Math.acos(angle);
+        var tan = Math.atan(angle);
+        console.log(angle, sin, cos, tan);
+        var dx = sin * 5;
+        var dy = cos * -5;
+        var missile = new Missile(30, 400, dx, dy);
+        return this.addObject(missile);
+    };
+
+    this.addObject = function(object) {
+        this.objects.push(object);
+        return object;
     };
 
     this.start = function(interval) {
@@ -111,18 +193,18 @@ function Game() {
     };
     
     this.update = function() {
-        _(this.missile).each(function(missile) {
-            missile.update();
+        _(this.objects).each(function(object) {
+            object.update();
         });
-        this.missile = _(this.missile).filter(function(missile) {
-            return missile.exploded != true;
+        this.objects = _(this.objects).filter(function(object) {
+            return object.exploded != true;
         });
     };
 
     this.draw = function (canvas, ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        _(this.missile).each(function(missile) {
-            missile.draw(canvas, ctx);
+        _(this.objects).each(function(object) {
+            object.draw(canvas, ctx);
         });
     };
 }
@@ -267,9 +349,11 @@ function UserInterface(game) {
         if (ui.game) {
             ui.game.pause();
         }
-        ui.left = { missiles: [] };
-        ui.right = { missiles: [] };
+        ui.left = new Launcher(30, 400, 0.3);
+        ui.right = new Launcher(600, 400, 1.6);
         ui.game = game;
+        game.addObject(ui.left);
+        game.addObject(ui.right);
         $('#main').each(function (index, canvas) {
             if (!canvas.getContext) {
                 return;
@@ -286,8 +370,7 @@ function UserInterface(game) {
             
             ui.redraw = function() {
                 // Then draw the last state
-                WithContext(ctx, { translateX: halfcell,
-                                   translateY: halfcell },
+                WithContext(ctx, {},
                             function () {
                                 ui.game.draw(canvas, ctx);
                             });
@@ -309,14 +392,36 @@ function UserInterface(game) {
         ui.unpause();
     }
 
+    this.keyup = function(event) {
+        if (event.keyCode == 87) {
+            var lastMissile = ui.left.missiles[ui.left.missiles.length - 1];
+            if (lastMissile) {
+                lastMissile.engineOn = false;
+            }
+        } else if (event.keyCode == 68) {
+            ui.left.turnRight(false);
+        } else if (event.keyCode == 65) {
+            ui.left.turnLeft(false);
+        }
+    };
+
     this.keydown = function(event) {
         if (event.keyCode == 87) {
-            ui.left.missiles.push(ui.game.addMissile(30, 400, 4, 4));
+            var lastMissile = ui.left.missiles[ui.left.missiles.length - 1];
+            if (!lastMissile || !lastMissile.engineOn) {
+                var newMissile = ui.game.addMissile(30, 400, ui.left.angle);
+                newMissile.engineOn = true;
+                ui.left.missiles.push(newMissile);
+            }
         } else if (event.keyCode == 83) {
             console.log(ui.left.missiles);
             _(ui.left.missiles).each(function(missile) {
                 missile.explode();
             });
+        } else if (event.keyCode == 68) {
+            ui.left.turnRight(true);
+        } else if (event.keyCode == 65) {
+            ui.left.turnLeft(true);
         }
     };
 }
