@@ -47,8 +47,7 @@ function Missile(x, y, dx, dy, angle) {
                 missile.exploded = true;
             } else {
                 missile.explodeCounter--;
-                missile.size = 10 - missile.explodeCounter * 2;
-                console.log(missile.size);
+                missile.size = (10 - missile.explodeCounter * 2) * game.explosionScale;
             }
             if (missile.exploded) {
                 _(game.objects).each(function(other) {
@@ -113,7 +112,8 @@ function Missile(x, y, dx, dy, angle) {
                            scale: halfcell / 5 },
                     function () {
                         ctx.beginPath();
-                        ctx.arc(0, 0, 10 - missile.explodeCounter * 2,
+                        ctx.arc(0, 0,
+                                (10 - missile.explodeCounter * 2) * game.explosionScale,
                                 0, 2*Math.PI);
                         ctx.lineWidth = 1;
                         ctx.fillStyle = "orange";
@@ -224,6 +224,8 @@ function Launcher(x, y, angle) {
 function Game() {
     this.objects = []
     this.tiles = {}
+    this.explosionScale = 1;
+    this.turnCounter = 0;
 
     this.init = function(callback) {
         this.callback = callback;
@@ -292,6 +294,10 @@ function Game() {
         if (this.gameOver) {
             return;
         }
+        this.turnCounter++;
+        if (this.turnCounter % 900 == 0) {
+            this.explosionScale++;
+        }        
         _(this.objects).each(function(object) {
             object.update();
         });
