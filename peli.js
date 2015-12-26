@@ -50,7 +50,6 @@ function Missile(x, y, dx, dy) {
             } else {
                 var row = Math.floor(missile.y / cellsize);
                 var col = Math.floor(missile.x / cellsize);
-                console.log(missile.x, missile.y, row, col);
                 if (row > 0 && col > 0 && row < rows && col < cols &&
                     game.tiles[row][col] == 1) {
                     missile.explode();
@@ -149,10 +148,10 @@ function Launcher(x, y, angle) {
 
     launcher.update = function() {
         if (launcher.turningRight) {
-            launcher.angle += 0.1;
+            launcher.angle += 0.05;
         }
         if (launcher.turningLeft) {
-            launcher.angle -= 0.1;
+            launcher.angle -= 0.05;
         }
         launcher.restrictAngle();
     };
@@ -214,8 +213,8 @@ function Game() {
         var sin = Math.asin(angle);
         var cos = Math.acos(angle);
         var tan = Math.atan(angle);
-        var dx = sin * 5;
-        var dy = cos * -5;
+        var dx = sin * 3;
+        var dy = cos * -3;
         var missile = new Missile(x, y, dx, dy);
         return this.addObject(missile);
     };
@@ -355,7 +354,7 @@ function UserInterface(game) {
     }
 
     ui.unpause = function() {
-        ui.game.start(50);
+        ui.game.start(1000/30);
         $('#pause').text("Pause");
         ui.paused = false;
     }
@@ -437,36 +436,47 @@ function UserInterface(game) {
     }
 
     this.keyup = function(event) {
-        if (event.keyCode == 87) {
-            var lastMissile = ui.left.missiles[ui.left.missiles.length - 1];
+        this.checkKeyUp(event, ui.left, 87, 83, 65, 68);
+        this.checkKeyUp(event, ui.right, 38, 40, 37, 39);
+    };
+
+    this.checkKeyUp = function(event, launcher, up, down, left, right) {
+        if (event.keyCode == up) {
+            var lastMissile = launcher.missiles[launcher.missiles.length - 1];
             if (lastMissile) {
                 lastMissile.engineOn = false;
             }
-        } else if (event.keyCode == 68) {
-            ui.left.turnRight(false);
-        } else if (event.keyCode == 65) {
-            ui.left.turnLeft(false);
+        } else if (event.keyCode == right) {
+            launcher.turnRight(false);
+        } else if (event.keyCode == left) {
+            launcher.turnLeft(false);
         }
     };
 
     this.keydown = function(event) {
-        if (event.keyCode == 87) {
-            var lastMissile = ui.left.missiles[ui.left.missiles.length - 1];
+        this.checkKeyDown(event, ui.left, 87, 83, 65, 68);
+        this.checkKeyDown(event, ui.right, 38, 40, 37, 39);
+    };
+    
+    this.checkKeyDown = function(event, launcher, up, down, left, right) {
+        if (event.keyCode == up) {
+            var lastMissile = launcher.missiles[launcher.missiles.length - 1];
             if (!lastMissile || !lastMissile.engineOn) {
-                var newMissile = ui.game.addMissile(ui.left.x,
-                                                    ui.left.y,
-                                                    ui.left.angle);
+                var newMissile = ui.game.addMissile(launcher.x,
+                                                    launcher.y,
+                                                    launcher.angle);
                 newMissile.engineOn = true;
-                ui.left.missiles.push(newMissile);
+                launcher.missiles.push(newMissile);
             }
-        } else if (event.keyCode == 83) {
-            _(ui.left.missiles).each(function(missile) {
+        } else if (event.keyCode == down) {
+            _(launcher.missiles).each(function(missile) {
                 missile.explode();
             });
-        } else if (event.keyCode == 68) {
-            ui.left.turnRight(true);
-        } else if (event.keyCode == 65) {
-            ui.left.turnLeft(true);
+        } else if (event.keyCode == right) {
+            console.log(event.keyCode);
+            launcher.turnRight(true);
+        } else if (event.keyCode == left) {
+            launcher.turnLeft(true);
         }
     };
 }
