@@ -21,13 +21,14 @@ function WithContext(ctx, params, fun) {
     }
 }
 
-function Missile(x, y, dx, dy) {
+function Missile(x, y, dx, dy, angle) {
     var missile = this;
     missile.x = x;
     missile.y = y;
     missile.dx = dx;
     missile.dy = dy;
     missile.engineOn = false;
+    missile.launchAngle = angle;
 
     missile.update = function () {
         if (missile.exploding) {
@@ -41,8 +42,8 @@ function Missile(x, y, dx, dy) {
             missile.y += missile.dy;
             missile.dy += 0.05;
             if (missile.engineOn) {
-                missile.dx += 0.1;
-                missile.dy -= 0.1;
+                missile.dx += 0.1 * Math.sin(missile.launchAngle);
+                missile.dy -= 0.1 * Math.cos(missile.launchAngle);
             }
             if (missile.x <= 5 ||
                 missile.x >= 795) {
@@ -210,12 +211,11 @@ function Game() {
     }
 
     this.addMissile = function(x, y, angle) {
-        var sin = Math.asin(angle);
-        var cos = Math.acos(angle);
-        var tan = Math.atan(angle);
+        var sin = Math.sin(angle);
+        var cos = Math.cos(angle);
         var dx = sin * 3;
         var dy = cos * -3;
-        var missile = new Missile(x, y, dx, dy);
+        var missile = new Missile(x, y, dx, dy, angle);
         return this.addObject(missile);
     };
 
@@ -473,7 +473,6 @@ function UserInterface(game) {
                 missile.explode();
             });
         } else if (event.keyCode == right) {
-            console.log(event.keyCode);
             launcher.turnRight(true);
         } else if (event.keyCode == left) {
             launcher.turnLeft(true);
