@@ -68,8 +68,10 @@ function Missile(x, y, dx, dy, angle) {
                 missile.dx += 0.1 * Math.sin(missile.launchAngle);
                 missile.dy -= 0.1 * Math.cos(missile.launchAngle);
             }
-            if (missile.x <= 5 ||
-                missile.x >= 795) {
+            if (missile.x <= 0 ||
+                missile.x >= 800) {
+                missile.exploded = true;
+            } else if (missile.y >= 480) {
                 missile.explode();
             } else {
                 var row = Math.floor(missile.y / cellsize);
