@@ -21,6 +21,16 @@ function WithContext(ctx, params, fun) {
     }
 }
 
+function distance_squared(a, b) {
+    var xd = a.x - b.x;
+    var yd = a.y - b.y;
+    return xd * xd + yd * yd;
+}
+
+function distance(a, b) {
+    return Math.sqrt(distance_squared(a, b));
+}
+
 function Missile(x, y, dx, dy, angle) {
     var missile = this;
     missile.x = x;
@@ -29,6 +39,7 @@ function Missile(x, y, dx, dy, angle) {
     missile.dy = dy;
     missile.engineOn = false;
     missile.launchAngle = angle;
+    missile.size = 1;
 
     missile.update = function () {
         if (missile.exploding) {
@@ -36,6 +47,19 @@ function Missile(x, y, dx, dy, angle) {
                 missile.exploded = true;
             } else {
                 missile.explodeCounter--;
+                missile.size = 10 - missile.explodeCounter * 2;
+                console.log(missile.size);
+            }
+            if (missile.exploded) {
+                _(game.objects).each(function(other) {
+                    if (other === missile || other.exploding) {
+                        return;
+                    }
+                    var d = distance(missile, other);
+                    if (d < missile.size + other.size) {
+                        other.hit()
+                    }
+                });
             }
         } else {
             missile.x += missile.dx;
@@ -104,6 +128,10 @@ function Missile(x, y, dx, dy, angle) {
         missile.exploding = true;
         missile.explodeCounter = 5;
     };
+
+    missile.hit = function() {
+        missile.explode();
+    };
 };
 
 function Launcher(x, y, angle) {
@@ -114,6 +142,8 @@ function Launcher(x, y, angle) {
     launcher.missiles = [];
     launcher.turningRight = false;
     launcher.turningLeft = false;
+    launcher.size = (3 * cellsize) / 2;
+    launcher.hp = 10;
 
     launcher.turnRight = function(value) {
         launcher.turningRight = value;
@@ -134,7 +164,8 @@ function Launcher(x, y, angle) {
                         ctx.lineTo(0, 25);
                         ctx.stroke();
                         ctx.restore();
-                        
+
+                        ctx.save();
                         ctx.beginPath();
                         ctx.arc(0, 0, 15, 1*Math.PI, 0);
                         ctx.lineWidth = 1;
@@ -143,7 +174,23 @@ function Launcher(x, y, angle) {
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
-                        
+                        ctx.restore();
+
+                        ctx.save();
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(-15, 4);
+                        ctx.lineTo(15, 4);
+                        ctx.strokeStyle = "red";
+                        ctx.stroke();
+
+                        ctx.beginPath();
+                        ctx.moveTo(-15, 4);
+                        ctx.lineTo(-15 + 30 * (launcher.hp / 10), 4);
+                        ctx.strokeStyle = "blue";
+                        ctx.stroke();
+                        ctx.restore();
+
                     });
     };
 
@@ -167,6 +214,11 @@ function Launcher(x, y, angle) {
             launcher.angle = min;
         }
     };
+
+    launcher.hit = function() {
+        launcher.hp--;
+    };
+
 }
 
 function Game() {
@@ -237,6 +289,9 @@ function Game() {
     };
     
     this.update = function() {
+        if (this.gameOver) {
+            return;
+        }
         _(this.objects).each(function(object) {
             object.update();
         });
@@ -251,6 +306,20 @@ function Game() {
         _(this.objects).each(function(object) {
             object.draw(canvas, ctx);
         });
+
+        if (this.gameOver) {
+            ctx.save();
+            ctx.scale(canvas.width / 300,
+                      canvas.height / 300);
+            ctx.font = "40px Sans";
+            ctx.lineWidth = 2;
+            ctx.fillStyle = "red";
+            ctx.strokeStyle = "black";
+            var text = "GAME OVER";
+            ctx.fillText(text, 20, 33);
+            ctx.strokeText(text, 20, 33);
+            ctx.restore();
+        }
     };
 }
 
@@ -414,7 +483,9 @@ function UserInterface(game) {
                 // Run physics N times depending on speed setting
                 for (var i = 0; i < ui.speed; ++i) {
                     game.update();
-                    if (game.gameover) {
+                    if (ui.left.hp <= 0 ||
+                        ui.right.hp <= 0) {
+                        game.gameOver = true;
                         break;
                     }
                 }
