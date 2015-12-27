@@ -92,21 +92,27 @@ function Missile(x, y, dx, dy, angle) {
     };
 
     missile.drawNormal = function(canvas, ctx) {
+        var angle = Math.atan2(missile.dy, missile.dx);
         WithContext(ctx, { translateX: missile.x, translateY: missile.y,
+                           rotate: angle,
                            scale: halfcell / 10 },
                     function () {
                         ctx.beginPath();
-                        ctx.arc(0, 0, 3, 0, 2*Math.PI);
-                        ctx.lineWidth = .1;
-                        if (missile.engineOn) {
-                            ctx.fillStyle = "red";
-                        } else {
-                            ctx.fillStyle = "black";
-                        }
-                        ctx.strokeStyle = "blue";
-                        ctx.fill();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(20, 0);
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = "black";
                         ctx.stroke();
                         ctx.closePath();
+                        
+                        if (missile.engineOn) {
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(-5, 0);
+                            ctx.lineWidth = 4;
+                            ctx.strokeStyle = "orange";
+                            ctx.stroke();
+                        }
                     });
     }
     missile.drawExploding = function(canvas, ctx) {
