@@ -31,6 +31,36 @@ function distance(a, b) {
     return Math.sqrt(distance_squared(a, b));
 }
 
+function Tree(x, y) {
+    var tree = this;
+    tree.x = x;
+    tree.y = y;
+    tree.size = halfcell;
+
+    tree.update = function () {
+    }
+    
+    tree.draw = function(canvas, ctx) {
+        WithContext(ctx, { translateX: tree.x, translateY: tree.y,
+                           scale: halfcell / 10 },
+                    function () {
+                        ctx.beginPath();
+                        ctx.arc(0, 0,
+                                10,
+                                0, 2*Math.PI);
+                        ctx.fillStyle = "green";
+                        ctx.fill();
+                        ctx.strokeStyle = "darkgreen";
+                        ctx.stroke();
+                    });
+    }
+
+    tree.hit = function () {
+        tree.exploded = true;
+    }
+
+}
+
 function Missile(x, y, dx, dy, angle) {
     var missile = this;
     missile.x = x;
@@ -49,7 +79,7 @@ function Missile(x, y, dx, dy, angle) {
                 missile.explodeCounter--;
                 missile.size = (10 - missile.explodeCounter * 2) * game.explosionScale;
             }
-            if (missile.exploded) {
+            if (missile.exploding) {
                 _(game.objects).each(function(other) {
                     if (other === missile || other.exploding) {
                         return;
@@ -76,9 +106,13 @@ function Missile(x, y, dx, dy, angle) {
             } else {
                 var row = Math.floor(missile.y / cellsize);
                 var col = Math.floor(missile.x / cellsize);
-                if (row > 0 && col > 0 && row < rows && col < cols &&
-                    game.tiles[row][col] == 1) {
-                    missile.explode();
+                if (row > 0 && col > 0 && row < rows && col < cols) {
+                    var tile = game.tiles[row][col];
+                    if (tile == 1) {
+                        missile.explode();
+                    } else if (tile == 2) {
+                        missile.dontExplode = true;
+                    }
                 }
             }
         }
@@ -99,8 +133,8 @@ function Missile(x, y, dx, dy, angle) {
                     function () {
                         ctx.beginPath();
                         ctx.moveTo(0, 0);
-                        ctx.lineTo(20, 0);
-                        ctx.lineWidth = 4;
+                        ctx.lineTo(25, 0);
+                        ctx.lineWidth = 6;
                         ctx.strokeStyle = "black";
                         ctx.stroke();
                         ctx.closePath();
@@ -108,8 +142,8 @@ function Missile(x, y, dx, dy, angle) {
                         if (missile.engineOn) {
                             ctx.beginPath();
                             ctx.moveTo(0, 0);
-                            ctx.lineTo(-5, 0);
-                            ctx.lineWidth = 4;
+                            ctx.lineTo(-8, 0);
+                            ctx.lineWidth = 5;
                             ctx.strokeStyle = "orange";
                             ctx.stroke();
                         }
@@ -133,8 +167,12 @@ function Missile(x, y, dx, dy, angle) {
     }
 
     missile.explode = function() {
-        missile.exploding = true;
-        missile.explodeCounter = 5;
+        if (missile.dontExplode) {
+            missile.exploded = true;
+        } else {
+            missile.exploding = true;
+            missile.explodeCounter = 5;
+        }
     };
 
     missile.hit = function() {
@@ -151,7 +189,8 @@ function Launcher(x, y, angle) {
     launcher.turningRight = false;
     launcher.turningLeft = false;
     launcher.size = (3 * cellsize) / 2;
-    launcher.hp = 10;
+    launcher.maxHp = 30;
+    launcher.hp = launcher.maxHp;
 
     launcher.turnRight = function(value) {
         launcher.turningRight = value;
@@ -194,7 +233,7 @@ function Launcher(x, y, angle) {
 
                         ctx.beginPath();
                         ctx.moveTo(-15, 4);
-                        ctx.lineTo(-15 + 30 * (launcher.hp / 10), 4);
+                        ctx.lineTo(-15 + 30 * (launcher.hp / launcher.maxHp), 4);
                         ctx.strokeStyle = "blue";
                         ctx.stroke();
                         ctx.restore();
@@ -253,6 +292,33 @@ function Game() {
                     this.tiles[r][c] = 0;
                 } else {
                     this.tiles[r][c] = 1;
+                }
+            }
+        }
+        
+        for (var c = 5; c < cols; c++) {
+            var level1 = this.groundLevelForColumns(c, c);
+            if (level1 >= this.groundLevelForColumns(c + 1, c + 1)) {
+                continue;
+            }
+            for (var c2 = c + 1; c2 < cols - 5 && c2 < c + 20; c2++) {
+                var level2 = this.groundLevelForColumns(c2, c2);
+                if (level2 <= level1) {
+                    if (c2 >= c + 7) {
+                        this.makeLake(c, c2, level1 / cellsize);
+                        c = c2;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    this.makeLake = function(c1, c2, level) {
+        for (var c = c1; c <= c2; ++c) {
+            for (var r = level; r < rows; ++r) {
+                if (this.tiles[r][c] == 0) {
+                    this.tiles[r][c] = 2;
                 }
             }
         }
@@ -363,6 +429,7 @@ function drawMap(game, canvas, ctx) {
             for (var c = 0; c < cols; ++c) {
                 var colors = { 0: "lightblue",
                                1: "olive",
+                               2: "blue",
                              }
                 ctx.fillStyle=colors[game.tiles[r][c]];
                 ctx.fillRect(c * cellsize, r * cellsize, cellsize, cellsize);
@@ -536,6 +603,16 @@ function UserInterface(game) {
                                     Math.PI / 2);
             game.addObject(ui.left);
             game.addObject(ui.right);
+            for (var i = 0; i < 100; ++i) {
+                var x = Math.random() * 800;
+                var c = as_column(x);
+                var y = game.groundLevelForColumns(c, c);
+                var row = y / cellsize;
+                if (game.tiles[row - 1][c] != 2) {
+                    var tree = new Tree(x, y);
+                    game.addObject(tree);
+                }
+            }
             ui.redraw();
             ui.pause();
         });
