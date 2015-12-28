@@ -237,11 +237,11 @@ function Game() {
 
     this.init = function(callback) {
         this.callback = callback;
-        var level = rows - 2;
+        var left = 10 + Math.random() * (rows - 5);
+        var right = 5 + Math.random() * (rows - 5);
+        var terrain = this.generate(left, right, rows / 2);
         for (var c = 0; c < cols; c++) {
-            var r = Math.random() * 3;
-            var change = Math.round(r - 1.5);
-            level += change;
+            var level = terrain[c];
             if (level >= rows - 1) {
                 level = rows - 2;
             }
@@ -258,6 +258,24 @@ function Game() {
         }
     }
 
+    this.generate = function(left, right, v) {
+        var middle = this.split(left, right, v);
+        if (v >= 1) {
+            var m1 = this.generate(left, middle, v * 0.5);
+            var m2 = this.generate(middle, right, v * 0.5);
+            return m1.concat(m2);
+        }
+        return [left, middle, right];
+    }
+
+    this.split = function(left, right, v) {
+        var r = Math.random() * v * 2 - v;
+        var middle =
+            Math.min(Math.max(2, (left + right) / 2 + r),
+                     rows - 2);
+        return middle;
+    };
+    
     this.groundLevelForColumns = function(min, max) {
         for (var r = 0; r < rows; r++) {
             for (var c = min; c <= max; c++) {
