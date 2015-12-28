@@ -524,12 +524,16 @@ function UserInterface(game) {
                 ui.redraw();
             };
             game.init(updateAndDraw);
-            ui.left = new Launcher(cellsize * 5.5,
-                                   game.groundLevelForColumns(4, 6),
-                                   0.3);
-            ui.right = new Launcher(cellsize * 75.5,
-                                    game.groundLevelForColumns(74, 76),
-                                    1.6);
+            var leftCol = 5;
+            ui.left = new Launcher(cellsize * (leftCol + 0.5),
+                                   game.groundLevelForColumns(leftCol - 1,
+                                                              leftCol + 1),
+                                   Math.PI / 2);
+            var rightCol = cols - 1 - 5;
+            ui.right = new Launcher(cellsize * (rightCol + 0.5),
+                                    game.groundLevelForColumns(rightCol - 1,
+                                                               rightCol + 1),
+                                    Math.PI / 2);
             game.addObject(ui.left);
             game.addObject(ui.right);
             ui.redraw();
