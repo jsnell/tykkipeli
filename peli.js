@@ -400,7 +400,6 @@ function Game() {
 
     this.draw = function (canvas, ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawMap(this, canvas, ctx);
         _(this.objects).each(function(object) {
             object.draw(canvas, ctx);
         });
@@ -504,119 +503,64 @@ function column(c) {
 function UserInterface(game) {
     var ui = this;
     ui.game = game;
-    ui.paused = false;
-    ui.speed = 1;
-
-    ui.togglePause = function() {
-        if (ui.paused) {
-            ui.unpause();
-        } else {
-            ui.pause();
-        }
-    }
-
-    ui.pause = function() {
-        ui.game.pause();
-        $('#pause').text("Unpause");
-        ui.paused = true;
-    }
-
-    ui.unpause = function() {
-        ui.game.start(1000/30);
-        $('#pause').text("Pause");
-        ui.paused = false;
-    }
-
-    ui.restart = function() {
-        ui.game.pause();
-        init(_(ui.game.plan.commands).map(function(record) {
-            return record.command;
-        }));
-    }
-
-    ui.reset = function() {
-        ui.game.pause();
-        init();
-    }
-
-    ui.changeSpeed = function() {
-        var value = parseInt($('#speed').val());
-        var speeds = {
-            1: 1,
-            2: 2,
-            3: 5,
-            4: 100,
-            5: 1000,
-            6: 10000,
-        };
-        ui.speed = speeds[value];
-    }
 
     ui.init = function(game) {
-        if (ui.game) {
-            ui.game.pause();
-        }
         ui.game = game;
-        $('#main').each(function (index, canvas) {
-            if (!canvas.getContext) {
-                return;
-            }
-            var ctx = canvas.getContext("2d");
 
-            cellsize = Math.floor(Math.min(canvas.width / cols,
-                                           canvas.height / rows));
-            halfcell = cellsize / 2;
+        var map_canvas = document.getElementById("canvas-map");
+        cellsize = Math.floor(Math.min(map_canvas.width / cols,
+                                       map_canvas.height / rows));
+        halfcell = cellsize / 2;
             
-            $(canvas).on('click', function (event) {
-                mapClickHandler(event);
-            });
-            
-            ui.redraw = function() {
-                // Then draw the last state
-                WithContext(ctx, {},
-                            function () {
-                                ui.game.draw(canvas, ctx);
-                            });
-            };
-            function updateAndDraw() {
-                // Run physics N times depending on speed setting
-                for (var i = 0; i < ui.speed; ++i) {
-                    game.update();
-                    if (ui.left.hp <= 0 ||
-                        ui.right.hp <= 0) {
-                        game.gameOver = true;
-                        break;
-                    }
-                }
-                ui.redraw();
-            };
-            game.init(updateAndDraw);
-            var leftCol = 5;
-            ui.left = new Launcher(cellsize * (leftCol + 0.5),
-                                   game.groundLevelForColumns(leftCol - 1,
-                                                              leftCol + 1),
-                                   Math.PI / 2);
-            var rightCol = cols - 1 - 5;
-            ui.right = new Launcher(cellsize * (rightCol + 0.5),
-                                    game.groundLevelForColumns(rightCol - 1,
-                                                               rightCol + 1),
-                                    Math.PI / 2);
-            game.addObject(ui.left);
-            game.addObject(ui.right);
-            for (var i = 0; i < 100; ++i) {
-                var x = Math.random() * 800;
-                var c = as_column(x);
-                var y = game.groundLevelForColumns(c, c);
-                var row = y / cellsize;
-                if (game.tiles[row - 1][c] != 2) {
-                    var tree = new Tree(x, y);
-                    game.addObject(tree);
+        ui.redraw = function() {
+            var objects_canvas = document.getElementById("canvas-objects");
+            var ctx = objects_canvas.getContext("2d");
+            WithContext(ctx, {},
+                        function () {
+                            ui.game.draw(objects_canvas, ctx);
+                        });
+        };
+        function updateAndDraw() {
+            // Run physics N times
+            for (var i = 0; i < 1; ++i) {
+                game.update();
+                if (ui.left.hp <= 0 ||
+                    ui.right.hp <= 0) {
+                    game.gameOver = true;
+                    break;
                 }
             }
+            // Then draw the last state
             ui.redraw();
-            ui.pause();
-        });
-        ui.unpause();
+        };
+        game.init(updateAndDraw);
+        drawMap(game, map_canvas,
+                map_canvas.getContext("2d"));
+
+        var leftCol = 5;
+        ui.left = new Launcher(cellsize * (leftCol + 0.5),
+                               game.groundLevelForColumns(leftCol - 1,
+                                                          leftCol + 1),
+                               Math.PI / 2);
+        var rightCol = cols - 1 - 5;
+        ui.right = new Launcher(cellsize * (rightCol + 0.5),
+                                game.groundLevelForColumns(rightCol - 1,
+                                                           rightCol + 1),
+                                Math.PI / 2);
+        game.addObject(ui.left);
+        game.addObject(ui.right);
+        for (var i = 0; i < 100; ++i) {
+            var x = Math.random() * 800;
+            var c = as_column(x);
+            var y = game.groundLevelForColumns(c, c);
+            var row = y / cellsize;
+            if (game.tiles[row - 1][c] != 2) {
+                var tree = new Tree(x, y);
+                game.addObject(tree);
+            }
+        }
+        ui.redraw();
+        game.start(1000/30);
     }
 
     this.keyup = function(event) {

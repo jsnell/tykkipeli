@@ -6,7 +6,9 @@
 </head>
 <body onload='init()' onkeydown='ui.keydown(event)' onkeyup='ui.keyup(event)'>
   <div id="main-container">
-    <canvas id="main" width=800 height=480>
+    <canvas id="canvas-map" width=800 height=480 class="game-canvas" style="z-index: 1">
+    </canvas>
+    <canvas id="canvas-objects" width=800 height=480 class="game-canvas" style="z-index: 2">
     </canvas>
   </div>
 </body>
