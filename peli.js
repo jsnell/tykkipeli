@@ -64,15 +64,18 @@ function Tree(x, y) {
 function MissileType() {
     var type = this;
     type.explosionScale = 0;
+    type.speed = 1;
+    type.warheads = 1;
 
     type.name = function() {
-        return "size " + type.explosionScale;
+        return "sz=" + type.explosionScale + " eng=" + type.speed + " wh=" + type.warheads;
     };
 };
 
-function Missile(missileType, x, y, dx, dy, angle) {
+function Missile(missileType, launcher, x, y, dx, dy, angle) {
     var missile = this;
     missile.type = missileType;
+    missile.launcher = launcher;
     missile.x = x;
     missile.y = y;
     missile.dx = dx;
@@ -105,8 +108,8 @@ function Missile(missileType, x, y, dx, dy, angle) {
             missile.y += missile.dy;
             missile.dy += 0.05;
             if (missile.engineOn) {
-                missile.dx += 0.1 * Math.sin(missile.launchAngle);
-                missile.dy -= 0.1 * Math.cos(missile.launchAngle);
+                missile.dx += 0.1 * Math.sin(missile.launchAngle) * missile.type.speed;
+                missile.dy -= 0.1 * Math.cos(missile.launchAngle) * missile.type.speed;
             }
             if (missile.x <= 0 ||
                 missile.x >= 800) {
@@ -187,6 +190,24 @@ function Missile(missileType, x, y, dx, dy, angle) {
 
     missile.hit = function() {
         missile.explode();
+    };
+
+    missile.turnEngineOff = function () {
+        if (missile.engineOn) {
+            var scale = 0.95;
+            for (var i = 1; i < missile.type.warheads; i++) {
+                var copy = game.addMissile(missile.type,
+                                           missile.launcher,
+                                           missile.x,
+                                           missile.y,
+                                           missile.angle);
+                copy.dx = missile.dx * scale;
+                copy.dy = missile.dy * scale;
+                scale = scale * scale;
+                missile.launcher.missiles.push(copy);
+            }
+            missile.engineOn = false;
+        }
     };
 };
 
@@ -331,7 +352,9 @@ function Launcher(x, y, angle) {
     }
 
     launcher.launchMissile = function (game) {
-        var newMissile = game.addMissile(launcher.currentMissileType(),
+        var type = launcher.currentMissileType()
+        var newMissile = game.addMissile(type,
+                                         launcher,
                                          launcher.x,
                                          launcher.y,
                                          launcher.angle);
@@ -446,12 +469,12 @@ function Game() {
         }        
     }
 
-    this.addMissile = function(type, x, y, angle) {
+    this.addMissile = function(type, launcher, x, y, angle) {
         var sin = Math.sin(angle);
         var cos = Math.cos(angle);
         var dx = sin * 3;
         var dy = cos * -3;
-        var missile = new Missile(type, x, y, dx, dy, angle);
+        var missile = new Missile(type, launcher, x, y, dx, dy, angle);
         return this.addObject(missile);
     };
 
@@ -516,6 +539,7 @@ function Game() {
         _(launchers).each(function (launcher) {
             launcher.addMissileType(type);
         });
+        return type;
     };
 }
 
@@ -674,7 +698,7 @@ function UserInterface(game) {
         if (event.keyCode == up) {
             var lastMissile = launcher.missiles[launcher.missiles.length - 1];
             if (lastMissile) {
-                lastMissile.engineOn = false;
+                lastMissile.turnEngineOff();
             }
         } else if (event.keyCode == right) {
             launcher.turnRight(false);
