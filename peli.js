@@ -356,6 +356,25 @@ function Game() {
         }
     }
 
+    this.flattenGround = function(cmin, cmax) {
+        var level = rows;
+        for (var c = cmin; c <= cmax; ++c) {
+            for (var r = 0; r < rows; r++) {
+                var tile = this.tiles[r][c];
+                if (tile == 1) {
+                    level = Math.min(r, level);
+                }
+            }
+        }
+        for (var c = cmin; c <= cmax; ++c) {
+            for (var r = level; r < rows; r++) {
+                if (this.tiles[r][c] != 1) {
+                    this.tiles[r][c] = 1;
+                }
+            }
+        }        
+    }
+
     this.addMissile = function(x, y, angle) {
         var sin = Math.sin(angle);
         var cos = Math.cos(angle);
@@ -534,19 +553,19 @@ function UserInterface(game) {
             ui.redraw();
         };
         game.init(updateAndDraw);
-        drawMap(game, map_canvas,
-                map_canvas.getContext("2d"));
 
         var leftCol = 5;
         ui.left = new Launcher(cellsize * (leftCol + 0.5),
                                game.groundLevelForColumns(leftCol - 1,
                                                           leftCol + 1),
                                Math.PI / 2);
+        game.flattenGround(leftCol - 1, leftCol + 1);
         var rightCol = cols - 1 - 5;
         ui.right = new Launcher(cellsize * (rightCol + 0.5),
                                 game.groundLevelForColumns(rightCol - 1,
                                                            rightCol + 1),
                                 Math.PI / 2);
+        game.flattenGround(rightCol - 1, rightCol + 1);
         game.addObject(ui.left);
         game.addObject(ui.right);
         for (var i = 0; i < 100; ++i) {
@@ -559,6 +578,8 @@ function UserInterface(game) {
                 game.addObject(tree);
             }
         }
+        drawMap(game, map_canvas,
+                map_canvas.getContext("2d"));
         ui.redraw();
         game.start(1000/30);
     }
